@@ -9,24 +9,42 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @title Fondo Ardilla - Generate DAI rewards from AAVE in ARBITRUM
+struct ProtocolAddresses {
+    address baseToken;
+    address aavePool;
+    address aaveToken;
+    address compoundComet;
+}
+
+
+/// @title Fondo Ardilla - Generate base-token rewards from AAVE-v3 and Compound
 /// @author Centauri dev team
 contract FondoArdillaV1 is ERC4626 {
 
     using SafeERC20 for IERC20;
 
+    uint16 constant private BASIS_POINTS = 100_00; // 100%
+
     address constant public AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
     address constant public ADAI_TOKEN = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
     address constant public DAI_TOKEN = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
-    constructor() ERC4626(IERC20(DAI_TOKEN)) ERC20("Staked DAI in aave", "stDAI") {}
+    constructor(
+        uint16 _aaveShare,
+        uint16 _compoundShare
+        
 
-    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
+
+    ) ERC4626(IERC20(DAI_TOKEN)) ERC20("Staked DAI in aave", "stDAI") {}
+
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    ) internal override {
         // Get tokens from users.
-        // console.log("IM here");
-        // console.log("allowance", IERC20(DAI_TOKEN).allowance(msg.sender, address(this)));
         IERC20(DAI_TOKEN).safeTransferFrom(caller, address(this), assets);
-        // console.log("total assets", IERC20(DAI_TOKEN).balanceOf(address(this)));
 
         // Send tokens to the DAI AAVE pool.
         IERC20(DAI_TOKEN).safeIncreaseAllowance(AAVE_POOL, assets);
