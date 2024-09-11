@@ -4,7 +4,7 @@ const { loadFixture, time } = require("@nomicfoundation/hardhat-network-helpers"
 
 const MLARGE = ethers.parseEther("100000000000000");
 
-describe("Swap Verde - Swap between Stablecoin and $VERDE tokens in Meta Pool ----", function () {
+describe("Meta Pool ----", function () {
   describe("Preview Swaps", function () {
     it("previewStableToVerde", async function () {
       const {
@@ -44,7 +44,7 @@ describe("Swap Verde - Swap between Stablecoin and $VERDE tokens in Meta Pool --
 });
 
 async function deployFixture() {
-  const FondoArdilla = await ethers.getContractFactory("FondoArdillaV1");
+  const FondoArdilla = await ethers.getContractFactory("FondoArdillaAave");
 
   const [
     owner,
@@ -53,11 +53,25 @@ async function deployFixture() {
     carl,
   ] = await ethers.getSigners();
 
-  const FondoArdillaContract = await FondoArdilla.deploy();
+  const FondoArdillaContract = await FondoArdilla.deploy(
+    // address _baseToken,
+    "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
+    // address _aavePool,
+    "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+    // address _aaveToken,
+    "0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE",
+    // string memory _name,
+    "Staked DAI in Aave",
+    // string memory _symbol
+    "stDAI"
+  );
   await FondoArdillaContract.waitForDeployment();
   
   const bigBag = await ethers.getImpersonatedSigner("0x2d070ed1321871841245d8ee5b84bd2712644322");
   const DAIContract = await ethers.getContractAt("ERC20", "0xda10009cbd5d07dd0cecc66161fc93d7c9000da1");
+
+  console.log(hre.network.name);
+  console.log(await ethers.provider.getBalance(bigBag.address));
 
   await DAIContract.connect(bigBag).transfer(alice.address, ethers.parseEther("100"));
   await DAIContract.connect(bigBag).transfer(bob.address, ethers.parseEther("200"));

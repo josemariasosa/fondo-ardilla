@@ -20,7 +20,7 @@ struct ProtocolAddresses {
 
 /// @title Fondo Ardilla - Generate base-token rewards from AAVE-v3 and Compound-Comet.
 /// @author Centauri dev team
-contract FondoArdillaUSDC is ERC4626 {
+contract FondoArdillaAaveComp is ERC4626 {
 
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -58,6 +58,7 @@ contract FondoArdillaUSDC is ERC4626 {
         aavePool = _addresses.aavePool;
         aaveToken = _addresses.aaveToken;
         compoundComet = _addresses.compoundComet;
+        minDeposit = _minDeposit;
     }
 
     function validateShares(uint16 _share1, uint16 _share2) private pure {
@@ -116,22 +117,18 @@ contract FondoArdillaUSDC is ERC4626 {
 
         _burn(owner, shares);
 
-        uint256 aaveBalance = getAaveBalance();
-        uint256 cometBalance = getCometBalance();
-
         (
             uint256 assetsFromAave,
             uint256 assetsFromComet
-        ) = splitAssetsWithdraw(assets, aaveBalance, cometBalance);
+        ) = splitAssetsWithdraw(assets, getAaveBalance(), getCometBalance());
 
-        uint256 extra;
         if (assetsFromAave > 0) {
-            if (aaveBalance >= assetsFromAave) {
-                IPool(aavePool).withdraw(baseToken, assetsFromAave, receiver);
-            }
+            IPool(aavePool).withdraw(baseToken, assetsFromAave, receiver);
         }
-
-        uint256 assetsToSend = totalSupply() == 0 ? type(uint).max : assets;
+        if (assetsFromComet > 0) {
+            IComet(compoundComet).withdraw(baseToken, assetsFromComet);
+            IERC20(baseToken).safeTransfer(receiver, assetsFromComet);
+        }
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }

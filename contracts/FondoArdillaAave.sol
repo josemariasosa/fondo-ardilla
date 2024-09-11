@@ -9,34 +9,37 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {IPool} from "@aave/core-v3/contracts/interfaces/IPool.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-struct ProtocolAddresses {
-    address baseToken;
-    address aavePool;
-    address aaveToken;
-    address compoundComet;
-}
+
+// Aave address Arbitrum One
+// address constant public AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
+// address constant public ADAI_TOKEN = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
+// address constant public DAI_TOKEN = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
 
 
-/// @title Fondo Ardilla - Generate base-token rewards from AAVE-v3 and Compound
+
+/// @title Fondo Ardilla - Generate base-token rewards from AAVE-v3
 /// @author Centauri dev team
-contract FondoArdillaV1 is ERC4626 {
+contract FondoArdillaAave is ERC4626 {
 
     using SafeERC20 for IERC20;
 
     uint16 constant private BASIS_POINTS = 100_00; // 100%
 
-    address constant public AAVE_POOL = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
-    address constant public ADAI_TOKEN = 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
-    address constant public DAI_TOKEN = 0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1;
+    address immutable public aavePool;
+    address immutable public aaveToken; // for the baseToken or asset().
 
     constructor(
-        uint16 _aaveShare,
-        uint16 _compoundShare
-        
+        address _baseToken,
+        address _aavePool,
+        address _aaveToken,
+        string memory _name,
+        string memory _symbol
+    ) ERC4626(IERC20(_baseToken)) ERC20(_name, _symbol) {
+        aavePool = _aavePool;
+        aaveToken = _aaveToken;
+    }
 
-
-    ) ERC4626(IERC20(DAI_TOKEN)) ERC20("Staked DAI in aave", "stDAI") {}
-
+    /// @notice Esta función reemplaza la definida en el ERC-4626.
     function _deposit(
         address caller,
         address receiver,
@@ -44,11 +47,11 @@ contract FondoArdillaV1 is ERC4626 {
         uint256 shares
     ) internal override {
         // Get tokens from users.
-        IERC20(DAI_TOKEN).safeTransferFrom(caller, address(this), assets);
+        IERC20(asset()).safeTransferFrom(caller, address(this), assets);
 
         // Send tokens to the DAI AAVE pool.
-        IERC20(DAI_TOKEN).safeIncreaseAllowance(AAVE_POOL, assets);
-        IPool(AAVE_POOL).supply(DAI_TOKEN, assets, address(this), 0);
+        IERC20(asset()).safeIncreaseAllowance(aavePool, assets);
+        IPool(aavePool).supply(asset(), assets, address(this), 0);
 
         _mint(receiver, shares);
 
@@ -69,12 +72,12 @@ contract FondoArdillaV1 is ERC4626 {
         _burn(owner, shares);
 
         uint256 assetsToSend = totalSupply() == 0 ? type(uint).max : assets;
-        IPool(AAVE_POOL).withdraw(DAI_TOKEN, assetsToSend, receiver);
+        IPool(aavePool).withdraw(asset(), assetsToSend, receiver);
 
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
     function totalAssets() public view override returns (uint256) {
-        return IERC20(ADAI_TOKEN).balanceOf(address(this));
+        return IERC20(aaveToken).balanceOf(address(this));
     }
 }
